@@ -13,24 +13,14 @@ import java.util.List;
 class ScreenGame extends Screen {
 
     /**
-     * Sprite for the Paddle
+     * Paddle element
      */
-    private TextureRegion paddleSprite;
+    private Paddle paddle;
 
     /**
-     * Position, width and height of the paddle
+     * Ball element, with sprite and rectangle
      */
-    private Rectangle paddle;
-
-    /**
-     * Sprite for the Ball
-     */
-    private TextureRegion ballSprite;
-
-    /**
-     * Position, width and height of the Ball
-     */
-    private Rectangle ball;
+    private Ball ball;
 
     /**
      * Array of possible Sprites for Bricks
@@ -43,12 +33,13 @@ class ScreenGame extends Screen {
     private List<Brick> bricks;
 
     ScreenGame() {
-        // Set up on non-block sprites
         Texture img = new Texture("breakout_pieces.png");
-        paddle = new Rectangle(32, 0, 64, 16);
-        paddleSprite = new TextureRegion(img, 49, 80, 64, 16);
-        ball = new Rectangle(100, 100, 8, 8);
-        ballSprite = new TextureRegion(img, 48, 66, 8, 8);
+
+        paddle = new Paddle(new Rectangle(32, 0, 64, 16),
+                new TextureRegion(img, 48, 8, 64, 16));
+
+        ball = new Ball(new Rectangle(100, 100, 8, 8),
+                new TextureRegion(img, 47, 30, 8, 8));
         // Set up list of possible brick sprites
         brickSprites = new TextureRegion[4];
         brickSprites[0] = (new TextureRegion(img, 8, 8, 32, 16));
@@ -56,48 +47,77 @@ class ScreenGame extends Screen {
         brickSprites[2] = (new TextureRegion(img, 8, 48, 32, 16));
         brickSprites[3] = (new TextureRegion(img, 8, 68, 32, 16));
         bricks = new ArrayList<Brick>();
-        List<Brick> line = new ArrayList<Brick>();
         // For each row
         for (int yOffset : new int[]{448, 432, 416, 400}) {
             int xOffset = 0;
             // Make 20 bricks with random colours
             for (int j = 0; j < 20; j++, xOffset += 32)
-                line.add(new Brick(new Rectangle(xOffset, yOffset, 32, 16),
+                bricks.add(new Brick(new Rectangle(xOffset, yOffset, 32, 16),
                         randomBrickSprite()));
         }
-        bricks.addAll(line);
     }
 
     public void render(SpriteBatch batch) {
-        drawRectangle(paddleSprite, paddle, batch);
-        drawRectangle(ballSprite, ball, batch);
         for (Brick brick : bricks)
-            drawRectangle(brickSprites[brick.textureRegion], brick.rectangle, batch);
+            if (brick.contains(ball.rectangle))
+                bricks.remove(brick);
+            else
+                draw(brickSprites[brick.textureRegion], brick, batch);
         if (Gdx.input.isKeyPressed(Input.Keys.ESCAPE))
             MyGdxGame.setScreen(new ScreenMenu());
+        draw(paddle, batch);
+        draw(ball, batch);
     }
 
-    public void dispose() { }
+    public void dispose() {
+    }
 
     /**
      * Get a number index of the brickSprites array, for use when generating random colours
+     *
      * @return int pertaining to position in brickSprites
      */
     private int randomBrickSprite() {
-        return (int)(Math.random()*(brickSprites.length));
+        return (int) (Math.random() * (brickSprites.length));
     }
 
 }
 
-/**
- * Brick class to store the rectangle and textureRegion of a breakable brick
- */
-class Brick {
-    Rectangle rectangle;
-    int textureRegion;
+abstract class TexturedElement extends Element {
+    TextureRegion textureRegion;
 
-    Brick(Rectangle rectangle, int textureRegion) {
-        this.rectangle = rectangle;
+    TexturedElement(Rectangle rectangle, TextureRegion textureRegion) {
+        super(rectangle);
         this.textureRegion = textureRegion;
     }
 }
+
+class Brick extends Element {
+    int textureRegion;
+
+    Brick(Rectangle rectangle, int textureRegion) {
+        super(rectangle);
+        this.textureRegion = textureRegion;
+    }
+}
+
+class Ball extends TexturedElement {
+    int angle;
+    int speed;
+
+    Ball(Rectangle rectangle, TextureRegion textureRegion) {
+        super(rectangle, textureRegion);
+        this.speed = 0;
+        this.angle = 180;
+    }
+
+    void move() {
+    }
+}
+
+class Paddle extends TexturedElement {
+    Paddle(Rectangle rectangle, TextureRegion textureRegion) {
+        super(rectangle, textureRegion);
+    }
+}
+

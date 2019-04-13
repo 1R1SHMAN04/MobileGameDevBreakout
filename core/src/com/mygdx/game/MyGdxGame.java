@@ -3,6 +3,7 @@ package com.mygdx.game;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Circle;
@@ -19,8 +20,8 @@ public class MyGdxGame extends ApplicationAdapter {
         scrCurrent = screen;
     }
 
-    static boolean isInputOnRectangle(Rectangle rectangle) {
-        return (Gdx.input.isTouched() && rectangle.contains(Gdx.input.getX(),
+    static boolean inputIsOnElement(Element element) {
+        return (Gdx.input.isTouched() && element.contains(Gdx.input.getX(),
                 Gdx.graphics.getHeight() - Gdx.input.getY()));
     }
 
@@ -55,6 +56,10 @@ abstract class Element {
         this.rectangle = rectangle;
     }
 
+    boolean contains(Element element) {
+        return contains(element.rectangle);
+    }
+
     boolean contains(Rectangle rectangle) {
         return rectangle.contains(rectangle);
     }
@@ -80,4 +85,10 @@ class TexturedElement extends Element {
         super(rectangle);
         this.textureRegion = textureRegion;
     }
+
+    TexturedElement(int x, int y, Texture texture) {
+        super(new Rectangle(x, y, texture.getWidth(), texture.getHeight()));
+        this.textureRegion = new TextureRegion(texture);
+    }
+
 }

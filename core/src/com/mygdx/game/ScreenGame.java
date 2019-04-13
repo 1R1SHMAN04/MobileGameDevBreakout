@@ -60,56 +60,60 @@ class ScreenGame extends Screen {
         }
         setGameState(GameState.Paused);
 
-        TextureRegion returnIcon = new TextureRegion(new Texture("Return to Menu.png"));
-        TextureRegion pauseIcon = new TextureRegion(new Texture("Pause.png"));
-
-        returnToMenu = new TexturedElement(new Rectangle(
-                Gdx.graphics.getWidth() - returnIcon.getRegionWidth(), Gdx.graphics.getHeight() - returnIcon.getRegionHeight(),
-                returnIcon.getRegionWidth(), returnIcon.getRegionHeight()), returnIcon);
-        pause = new TexturedElement(new Rectangle(
-                Gdx.graphics.getWidth() - pauseIcon.getRegionWidth(), pauseIcon.getRegionHeight(),
-                pauseIcon.getRegionWidth(), pauseIcon.getRegionHeight()), pauseIcon);
+        Texture returnIcon = new Texture("Return to Menu.png");
+        Texture pauseIcon = new Texture("Pause.png");
+        returnToMenu = new TexturedElement(Gdx.graphics.getWidth() - returnIcon.getWidth(),
+                Gdx.graphics.getHeight() - returnIcon.getHeight(), returnIcon);
+        pause = new TexturedElement(Gdx.graphics.getWidth() - pauseIcon.getWidth(),
+                pauseIcon.getHeight(), pauseIcon);
     }
 
     public void render(SpriteBatch batch) {
-        framesSincePaused++;
-        // Render all the bricks, the paddle and the ball
-        for (Brick brick : bricks)
-            if (brick.contains(ball.rectangle))
-                bricks.remove(brick);
-            else
-                draw(brickSprites[brick.textureRegion], brick, batch);
-        draw(paddle, batch);
-        draw(ball, batch);
         // Depending on the Game State, do some stuff
         switch (gameState) {
             case Paused:
+                framesSincePaused++;
                 // Draw the pause button
                 draw(returnToMenu, batch);
                 // If you are touching the screen
                 if (Gdx.input.isTouched()) {
                     // If the touch is on the returnToMenu button
-                    if (MyGdxGame.isInputOnRectangle(returnToMenu.rectangle)) {
+                    if (MyGdxGame.inputIsOnElement(returnToMenu)) {
                         // Return to the menu
                         MyGdxGame.setScreen(new ScreenMenu());
                     }
-                    if (!MyGdxGame.isInputOnRectangle(pause.rectangle) && framesSincePaused > 60) {
+                    if (!MyGdxGame.inputIsOnElement(pause) && framesSincePaused > 60) {
                         setGameState(GameState.Playing);
                     }
                 }
                 break;
             case Playing:
                 draw(pause, batch);
-                if (MyGdxGame.isInputOnRectangle(pause.rectangle)) {
-                    setGameState(GameState.Paused);
+                if(Gdx.input.isTouched()) {
+                    if (MyGdxGame.inputIsOnElement(pause)) {
+                        // If pressing pause, set gameState to pause
+                        setGameState(GameState.Paused);
+                        break;
+                    }
                 }
-                // If pressing return, set gameState to pause
+
                 break;
 
             case PostGame:
                 // yeah idk, display the score?
                 break;
         }
+        // Render all the bricks, the paddle and the ball
+        for (Brick brick : bricks)
+            if (brick.contains(ball)) {
+                // TODO: Update speed/direction of ball
+                // TODO: Move this to the case statement
+                bricks.remove(brick);
+            }
+            else
+                draw(brickSprites[brick.textureRegion], brick, batch);
+        draw(paddle, batch);
+        draw(ball, batch);
     }
 
     public void dispose() {

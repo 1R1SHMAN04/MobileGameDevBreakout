@@ -4,6 +4,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Circle;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
@@ -16,6 +17,11 @@ public class MyGdxGame extends ApplicationAdapter {
     static void setScreen(Screen screen) {
         scrCurrent.dispose();
         scrCurrent = screen;
+    }
+
+    static boolean isInputOnRectangle(Rectangle rectangle) {
+        return (Gdx.input.isTouched() && rectangle.contains(Gdx.input.getX(),
+                Gdx.graphics.getHeight() - Gdx.input.getY()));
     }
 
     @Override
@@ -39,6 +45,7 @@ public class MyGdxGame extends ApplicationAdapter {
         batch.dispose();
         scrCurrent.dispose();
     }
+
 }
 
 abstract class Element {
@@ -64,4 +71,13 @@ abstract class Element {
         return rectangle.contains(point);
     }
 
+}
+
+class TexturedElement extends Element {
+    TextureRegion textureRegion;
+
+    TexturedElement(Rectangle rectangle, TextureRegion textureRegion) {
+        super(rectangle);
+        this.textureRegion = textureRegion;
+    }
 }

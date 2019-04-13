@@ -1,7 +1,6 @@
 package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -31,6 +30,10 @@ class ScreenGame extends Screen {
      * List of Bricks, with their own randomly selected sprite
      */
     private List<Brick> bricks;
+    private GameState gameState;
+    private TexturedElement returnToMenu;
+    private TexturedElement pause;
+    private int framesSincePaused;
 
     ScreenGame() {
         Texture img = new Texture("breakout_pieces.png");
@@ -55,18 +58,58 @@ class ScreenGame extends Screen {
                 bricks.add(new Brick(new Rectangle(xOffset, yOffset, 32, 16),
                         randomBrickSprite()));
         }
+        setGameState(GameState.Paused);
+
+        TextureRegion returnIcon = new TextureRegion(new Texture("Return to Menu.png"));
+        TextureRegion pauseIcon = new TextureRegion(new Texture("Pause.png"));
+
+        returnToMenu = new TexturedElement(new Rectangle(
+                Gdx.graphics.getWidth() - returnIcon.getRegionWidth(), Gdx.graphics.getHeight() - returnIcon.getRegionHeight(),
+                returnIcon.getRegionWidth(), returnIcon.getRegionHeight()), returnIcon);
+        pause = new TexturedElement(new Rectangle(
+                Gdx.graphics.getWidth() - pauseIcon.getRegionWidth(), pauseIcon.getRegionHeight(),
+                pauseIcon.getRegionWidth(), pauseIcon.getRegionHeight()), pauseIcon);
     }
 
     public void render(SpriteBatch batch) {
+        framesSincePaused++;
+        // Render all the bricks, the paddle and the ball
         for (Brick brick : bricks)
             if (brick.contains(ball.rectangle))
                 bricks.remove(brick);
             else
                 draw(brickSprites[brick.textureRegion], brick, batch);
-        if (Gdx.input.isKeyPressed(Input.Keys.ESCAPE))
-            MyGdxGame.setScreen(new ScreenMenu());
         draw(paddle, batch);
         draw(ball, batch);
+        // Depending on the Game State, do some stuff
+        switch (gameState) {
+            case Paused:
+                // Draw the pause button
+                draw(returnToMenu, batch);
+                // If you are touching the screen
+                if (Gdx.input.isTouched()) {
+                    // If the touch is on the returnToMenu button
+                    if (MyGdxGame.isInputOnRectangle(returnToMenu.rectangle)) {
+                        // Return to the menu
+                        MyGdxGame.setScreen(new ScreenMenu());
+                    }
+                    if (!MyGdxGame.isInputOnRectangle(pause.rectangle) && framesSincePaused > 60) {
+                        setGameState(GameState.Playing);
+                    }
+                }
+                break;
+            case Playing:
+                draw(pause, batch);
+                if (MyGdxGame.isInputOnRectangle(pause.rectangle)) {
+                    setGameState(GameState.Paused);
+                }
+                // If pressing return, set gameState to pause
+                break;
+
+            case PostGame:
+                // yeah idk, display the score?
+                break;
+        }
     }
 
     public void dispose() {
@@ -81,15 +124,15 @@ class ScreenGame extends Screen {
         return (int) (Math.random() * (brickSprites.length));
     }
 
-}
-
-abstract class TexturedElement extends Element {
-    TextureRegion textureRegion;
-
-    TexturedElement(Rectangle rectangle, TextureRegion textureRegion) {
-        super(rectangle);
-        this.textureRegion = textureRegion;
+    private void setGameState(GameState gameState) {
+        if (gameState == GameState.Paused) {
+            framesSincePaused = 0;
+        }
+        this.gameState = gameState;
     }
+
+    public enum GameState {Paused, Playing, PostGame}
+
 }
 
 class Brick extends Element {
@@ -111,7 +154,9 @@ class Ball extends TexturedElement {
         this.angle = 180;
     }
 
-    void move() {
+    void move(int amount) {
+        //Maths
+        //rectangle.x += speed;
     }
 }
 

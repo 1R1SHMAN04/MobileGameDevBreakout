@@ -42,7 +42,7 @@ class ScreenGame extends Screen {
                 new TextureRegion(img, 48, 8, 64, 16));
 
         ball = new Ball(new Rectangle(Gdx.graphics.getWidth() / 2f - 4, 100, 8, 8),
-                new TextureRegion(img, 47, 30, 8, 8));
+                new TextureRegion(img, 47, 30, 8, 8),this);
         // Set up list of possible brick sprites
         brickSprites = new TextureRegion[4];
         brickSprites[0] = (new TextureRegion(img, 8, 8, 32, 16));
@@ -117,22 +117,27 @@ class ScreenGame extends Screen {
                     }
                 }
                 ball.move();
-                //System.out.println("Paddle:  (x=" + paddle.rectangle.x + ", y=" + paddle.rectangle.y + ")");
-                //System.out.println("Ball:  (x=" + ball.rectangle.x + ", y=" + ball.rectangle.y + ")");
+                // If the paddle and ball overlap, make the ball travel up
+                // If paddle clips two corners at the same time
                 if (MyGdxGame.rectanglesOverlap(paddle.rectangle, ball.rectangle)) {
-                    ball.flipX();
+                    ball.vertical = Ball.CompassVertical.N;
                 }
 
-                //TODO: If ball is lower than screen you lose
+                //TODO: If ball is lower than top of paddle you lose
 
                 /* If the ball is intersecting with any brick, delete the brick and change balls
                 direction */
+                boolean doINeedToFlip = false;
                 for (Brick brick : bricks) {
-                    if (brick.contains(ball)) {
-                        // TODO: Update direction of ball
-                        bricks.remove(brick);
-                    }
+                    if (!brick.isDed())
+                        if (MyGdxGame.rectanglesOverlap(brick.rectangle, ball.rectangle)) {
+                            System.out.println("Hit a brick");
+                            doINeedToFlip = true;
+                            brick.kill();
+                        }
                 }
+                if (doINeedToFlip)
+                    ball.vertical = Ball.CompassVertical.S;
                 break;
             case PostGame:
                 // yeah idk, display the score?
@@ -140,7 +145,8 @@ class ScreenGame extends Screen {
         }
         // Render all the bricks, the paddle and the ball
         for (Brick brick : bricks)
-            draw(brickSprites[brick.textureRegion], brick, batch);
+            if (!brick.isDed())
+                draw(brickSprites[brick.textureRegion], brick, batch);
         draw(paddle, batch);
         draw(ball, batch);
     }
@@ -155,7 +161,6 @@ class ScreenGame extends Screen {
      */
     private int randomBrickSprite() {
         return MyGdxGame.randomInt(0, brickSprites.length);
-        //return (int) (Math.random() * (brickSprites.length));
     }
 
     /**
@@ -184,6 +189,11 @@ class ScreenGame extends Screen {
         return framesSincePauseChanged > frames;
     }
 
+    public float paddleY() {
+        return paddle.getY();
+    }
+
+
     public enum GameState {Paused, Playing, PostGame}
 
 }
@@ -193,124 +203,106 @@ class ScreenGame extends Screen {
  */
 class Brick extends Element {
     int textureRegion;
+    private boolean dead;
 
     Brick(Rectangle rectangle, int textureRegion) {
         super(rectangle);
         this.textureRegion = textureRegion;
+        dead = false;
     }
+
+    boolean isDed() {
+        return dead;
+    }
+
+    void kill() {
+        dead = true;
+    }
+
 }
 
 class Ball extends TexturedElement {
 
     private int speed;
-    private Compass direction;
-    private int angle;
+    ScreenGame screenGame;
+    CompassVertical vertical;
+    CompassHorizontal horizontal;
 
-    Ball(Rectangle rectangle, TextureRegion textureRegion) {
+    Ball(Rectangle rectangle, TextureRegion textureRegion, ScreenGame screenGame) {
         super(rectangle, textureRegion);
-        this.speed = 5;
-        //setAngle(MyGdxGame.randomInt(135, 225));
-        setAngle(180);
+        this.speed = 2;
+        this.vertical = CompassVertical.S;
+        this.horizontal = CompassHorizontal.W;
+        this.screenGame = screenGame;
     }
 
-    public void flipY() {
-        switch (direction) {
-            case NE:
-                setAngle(angle - 90);
-                break;
-            case SE:
-                setAngle(angle + 90);
-                break;
-            case SW:
-                setAngle(angle - 90);
-                break;
-            case NW:
-                setAngle(angle + 90);
-                break;
+    void flipHorizontal() {
+        System.out.println("It's flipping horizontal dude!");
+        if (horizontal.equals(CompassHorizontal.E)) {
+            horizontal = CompassHorizontal.W;
+            return;
+        }
+        if (horizontal.equals(CompassHorizontal.W)) {
+            horizontal = CompassHorizontal.E;
         }
     }
 
-    void flipX() {
-        //setAngle(45);
-        System.out.println("Angle before: " + angle);
-        flipY();
-        System.out.println("Angle after: " + angle);
-    }
+    void flipVertical() {
 
-    private void setAngle(int angle) {
-        while (angle > 360)
-            angle -= 360;
-        this.angle = angle;
-        setDirection();
+        if (vertical.equals(CompassVertical.S)) {
+            System.out.println("Mario Time!");
+            vertical = CompassVertical.N;
+            return;
+        }
+        if (vertical.equals(CompassVertical.N)) {
+            System.out.println("We're going down, captain!");
+            vertical = CompassVertical.S;
+        }
     }
-
-    private void setDirection() {
-        // IF angle is 90, 180, 270, or 0 add one to it
-        if (MyGdxGame.between(angle, 0, 90))
-            direction = Compass.NE;
-        if (MyGdxGame.between(angle, 90, 180))
-            direction = Compass.SE;
-        if (MyGdxGame.between(angle, 180, 270))
-            direction = Compass.SW;
-        if (MyGdxGame.between(angle, 270, 360))
-            direction = Compass.NW;
-    }
-
 
     void move() {
         // TODO: Delta Time Fuckery (rectangle.x += speed * getDeltaTime();)
-        double triAngle = angle;
-        switch (direction) {
-            case NE:
-                break;
-            case SE:
-                //triAngle -= 90;
-                break;
-            case SW:
-                //triAngle -= 180;
-                break;
-            case NW:
-                // triAngle -= 270;
-                break;
-        }
-        triAngle = Math.abs(triAngle);
-        double sinValue = Math.sin(Math.toRadians(triAngle));
-        int hypotenuse = speed;
-        float opposite = (float) (sinValue * hypotenuse);
-        float adjacent = (float) Math.sqrt((hypotenuse * hypotenuse) - (opposite * opposite));
-        switch (direction) {
-            case NE:
-                rectangle.x += adjacent;
-                rectangle.y -= opposite;
-                break;
-            case SE:
-                rectangle.x += adjacent;
-                rectangle.y += opposite;
-                break;
-            case SW:
-                rectangle.x -= adjacent;
-                rectangle.y += opposite;
-                break;
-            case NW:
-                rectangle.x -= adjacent;
-                rectangle.y -= opposite;
-                break;
-        }
-        // If the ball is at the left, put it on the exact left, and flip it
-        if (rectangle.x <= 0) {
-            rectangle.x = 0;
-            flipY();
-        }
-        //System.out.println("Side: " + (Gdx.graphics.getWidth() - rectangle.width));
-        if (rectangle.x >= Gdx.graphics.getWidth() - rectangle.width) {
-            rectangle.x = Gdx.graphics.getWidth() - rectangle.width;
-            flipX();
-        }
+        double triAngle;
+        if (vertical.equals(CompassVertical.N))
+            if (horizontal.equals(CompassHorizontal.E))
+                triAngle = 315;
+            else
+                triAngle = 45;
+        else if (horizontal.equals(CompassHorizontal.E))
+            triAngle = 225;
+        else
+            triAngle = 135;
 
-        if (angle > 360 || angle < 0) System.out.println("This ain't it chief");
+        int hypotenuse = speed;
+        float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * hypotenuse));
+        float height = Math.abs((float) Math.sqrt((hypotenuse * hypotenuse) - (width * width)));
+
+        if (vertical.equals(CompassVertical.N)) rectangle.y += height;
+        else rectangle.y -= height;
+        if (horizontal.equals(CompassHorizontal.E)) rectangle.x -= width;
+        else rectangle.x += width;
+
+        // Hit the left os screen
+        if (rectangle.x < 0) {
+            rectangle.x = 0;
+            flipHorizontal();
+        }
+        // Hit the right of the screen
+        else if (rectangle.x > Gdx.graphics.getWidth() - rectangle.width) {
+            flipHorizontal();
+        }
+        else if(rectangle.y < screenGame.paddleY()){
+            // You die
+        }
+        else if(rectangle.getY() > Gdx.graphics.getHeight()) {
+            // Bounce down
+        }
+        //System.out.println("Travelling " + vertical + horizontal);
     }
 
-    enum Compass {NE, SE, SW, NW}
+    enum CompassVertical {N, S}
+
+    enum CompassHorizontal {E, W}
 }
 
 class Paddle extends TexturedElement {

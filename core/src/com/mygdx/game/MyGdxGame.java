@@ -33,7 +33,16 @@ public class MyGdxGame extends ApplicationAdapter {
         return oneOverlap(first, second) || oneOverlap(second, first);
     }
 
-    static boolean oneOverlap(Rectangle first, Rectangle second) {
+    static boolean clippingCorner(Rectangle first, Rectangle second) {
+        return oneClip(first, second) || oneClip(second, first);
+    }
+
+    private static boolean oneClip(Rectangle first, Rectangle second) {
+        return ((first.height + first.y  == second.y) && (first.x == second.x + second.width)) ||
+                (first.x + first.width == second.x && first.y + first.height == second.y);
+    }
+
+    private static boolean oneOverlap(Rectangle first, Rectangle second) {
         return between(second.x, first.x, first.x + first.width) &&
                 between(second.y, first.y, first.y + first.height);
     }

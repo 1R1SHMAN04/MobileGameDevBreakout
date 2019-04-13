@@ -117,9 +117,12 @@ class ScreenGame extends Screen {
                     }
                 }
                 ball.move();
+                //System.out.println("Paddle:  (x=" + paddle.rectangle.x + ", y=" + paddle.rectangle.y + ")");
+                //System.out.println("Ball:  (x=" + ball.rectangle.x + ", y=" + ball.rectangle.y + ")");
+                if (MyGdxGame.rectanglesOverlap(paddle.rectangle, ball.rectangle)) {
+                    ball.flipX();
+                }
 
-                //TODO: Move the ball
-                //  TODO: if(paddle.contains(ball) change the balls speed/direction
                 //TODO: If ball is lower than screen you lose
 
                 /* If the ball is intersecting with any brick, delete the brick and change balls
@@ -205,36 +208,54 @@ class Ball extends TexturedElement {
 
     Ball(Rectangle rectangle, TextureRegion textureRegion) {
         super(rectangle, textureRegion);
-        this.speed = 1;
+        this.speed = 5;
         //setAngle(MyGdxGame.randomInt(135, 225));
-        setAngle(200);
+        setAngle(180);
+    }
+
+    public void flipY() {
+        switch (direction) {
+            case NE:
+                setAngle(angle - 90);
+                break;
+            case SE:
+                setAngle(angle + 90);
+                break;
+            case SW:
+                setAngle(angle - 90);
+                break;
+            case NW:
+                setAngle(angle + 90);
+                break;
+        }
+    }
+
+    void flipX() {
+        //setAngle(45);
+        System.out.println("Angle before: " + angle);
+        flipY();
+        System.out.println("Angle after: " + angle);
     }
 
     private void setAngle(int angle) {
-        while (angle > 360) {
+        while (angle > 360)
             angle -= 360;
-        }
         this.angle = angle;
         setDirection();
     }
 
     private void setDirection() {
         // IF angle is 90, 180, 270, or 0 add one to it
-        if (between(angle, 0, 90))
+        if (MyGdxGame.between(angle, 0, 90))
             direction = Compass.NE;
-        if (between(angle, 90, 180))
+        if (MyGdxGame.between(angle, 90, 180))
             direction = Compass.SE;
-        if (between(angle, 180, 270))
+        if (MyGdxGame.between(angle, 180, 270))
             direction = Compass.SW;
-        if (between(angle, 270, 360))
+        if (MyGdxGame.between(angle, 270, 360))
             direction = Compass.NW;
     }
 
-    private boolean between(int number, int min, int max) {
-        if (number >= min && number < max)
-            return true;
-        return false;
-    }
 
     void move() {
         // TODO: Delta Time Fuckery (rectangle.x += speed * getDeltaTime();)
@@ -243,13 +264,13 @@ class Ball extends TexturedElement {
             case NE:
                 break;
             case SE:
-                triAngle -= 90;
+                //triAngle -= 90;
                 break;
             case SW:
-                triAngle -= 180;
+                //triAngle -= 180;
                 break;
             case NW:
-                triAngle -= 270;
+                // triAngle -= 270;
                 break;
         }
         triAngle = Math.abs(triAngle);
@@ -275,18 +296,18 @@ class Ball extends TexturedElement {
                 rectangle.y -= opposite;
                 break;
         }
+        // If the ball is at the left, put it on the exact left, and flip it
         if (rectangle.x <= 0) {
             rectangle.x = 0;
-            if (direction.equals(Compass.NE) || direction.equals(Compass.NW)) setAngle(angle + 90);
-            if (direction.equals(Compass.SE) || direction.equals(Compass.SW)) setAngle(angle - 90);
+            flipY();
         }
-        if(rectangle.x >= Gdx.graphics.getWidth() - rectangle.width) {
-            if (direction.equals(Compass.NE) || direction.equals(Compass.NW)) setAngle(angle + 90);
-            if (direction.equals(Compass.SE) || direction.equals(Compass.SW)) setAngle(angle - 90);
+        //System.out.println("Side: " + (Gdx.graphics.getWidth() - rectangle.width));
+        if (rectangle.x >= Gdx.graphics.getWidth() - rectangle.width) {
+            rectangle.x = Gdx.graphics.getWidth() - rectangle.width;
+            flipX();
         }
 
         if (angle > 360 || angle < 0) System.out.println("This ain't it chief");
-        System.out.println(angle);
     }
 
     enum Compass {NE, SE, SW, NW}

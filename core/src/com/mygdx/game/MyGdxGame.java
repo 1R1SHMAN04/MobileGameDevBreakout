@@ -29,6 +29,27 @@ public class MyGdxGame extends ApplicationAdapter {
         return (int) (Math.random() * end) + start;
     }
 
+    static boolean rectanglesOverlap(Rectangle first, Rectangle second) {
+        return oneOverlap(first, second) || oneOverlap(second, first);
+    }
+
+    static boolean oneOverlap(Rectangle first, Rectangle second) {
+        return between(second.x, first.x, first.x + first.width) &&
+                between(second.y, first.y, first.y + first.height);
+    }
+
+    private static boolean between(float number, float min, float max) {
+        if (number >= min && number < max)
+            return true;
+        return false;
+    }
+
+    static boolean between(int number, int min, int max) {
+        if (number >= min && number < max)
+            return true;
+        return false;
+    }
+
     @Override
     public void create() {
         resize(10, 5);
@@ -93,7 +114,7 @@ abstract class Element {
     }
 
     float getHeight() {
-        return  rectangle.height;
+        return rectangle.height;
     }
 
 }

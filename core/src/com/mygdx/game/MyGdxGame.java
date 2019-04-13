@@ -25,6 +25,10 @@ public class MyGdxGame extends ApplicationAdapter {
                 Gdx.graphics.getHeight() - Gdx.input.getY()));
     }
 
+    static int randomInt(int start, int end) {
+        return (int) (Math.random() * end) + start;
+    }
+
     @Override
     public void create() {
         resize(10, 5);
@@ -74,6 +78,22 @@ abstract class Element {
 
     boolean contains(Vector2 point) {
         return rectangle.contains(point);
+    }
+
+    float getX() {
+        return rectangle.x;
+    }
+
+    float getY() {
+        return rectangle.y;
+    }
+
+    float getWidth() {
+        return rectangle.width;
+    }
+
+    float getHeight() {
+        return  rectangle.height;
     }
 
 }

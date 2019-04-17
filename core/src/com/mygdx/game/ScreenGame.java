@@ -44,7 +44,7 @@ class ScreenGame extends Screen {
     /**
      * Frames since the game has been paused, game runs at 60fps
      */
-    private int framesSincePauseChanged;
+    private int framesSinceStateChanged;
 
     /**
      * Constructor to set right the screen and start on GameState.Paused
@@ -91,10 +91,10 @@ class ScreenGame extends Screen {
      */
     private void update(SpriteBatch batch) {
         boolean isTouched = Gdx.input.isTouched();
+        framesSinceStateChanged++;
         // Depending on the Game State, do some stuff
         switch (gameState) {
             case Paused:
-                framesSincePauseChanged++;
                 // Draw the return button
                 draw(returnToMenu, batch);
                 // If you are touching the screen
@@ -110,12 +110,11 @@ class ScreenGame extends Screen {
                 }
                 break;
             case Playing:
-                framesSincePauseChanged++;
                 // Draw the pause button
                 draw(pause, batch);
                 if (isTouched) {
-                    // If you are touching the pause button and the game hasn't been paused in the
-                    // 60 frames
+                    /* If you are touching the pause button and the game hasn't been paused in the
+                     last 60 frames */
                     if (MyGdxGame.clickingElement(pause) && pausedNotRecently()) {
                         // If pressing pause, set gameState to pause
                         setGameState(GameState.Paused);
@@ -123,33 +122,33 @@ class ScreenGame extends Screen {
                     } else { // If not touching pause, move the paddle
                         float centerOfPaddle = paddle.getX() + (paddle.getWidth() / 2);
                         float x = Gdx.input.getX();
-                        // If input is to the up
+                        // If input is to the east
                         if (x > centerOfPaddle) {
                             // And the input is further away than the paddles speed
-                            // Move to the up
+                            // Move to the east
                             if (x - centerOfPaddle > paddle.speed) paddle.move(true);
                         }
-                        // If input is the the right
+                        // If input is the the west
                         else // And the input is further away than the paddles speed
-                            if (x < centerOfPaddle) // Move to the right
+                            if (x < centerOfPaddle) // Move to the west
                                 if (centerOfPaddle - x > paddle.speed)
                                     paddle.move(false);
                     }
                 }
                 // Move the ball
                 ball.move();
-                // Hit the right of the screen
+                // Hit the left of the screen
                 if (ball.getX() < 0) {
                     ball.rectangle.x = 0;
                     ball.flipHorizontal();
                 }
-                // Hit the up of the screen
+                // Hit the right of the screen
                 else if (ball.getX() > Gdx.graphics.getWidth() - ball.getWidth()) {
                     ball.flipHorizontal();
                 }
                 // Hit the bottom
-                else if (ball.getY() < paddle.getY() + paddle.getHeight() - 4) {
-                    //TODO: Make sure this is the up way around before submitting
+                else if (ball.getY() < paddle.getHeight() / 4) {
+                    //TODO: Make sure this is the right way around before submitting
                     //rectangle.y = screenGame.paddle().getY() + screenGame.paddle().getHeight();
                     //flipVertical();
                     setGameState(ScreenGame.GameState.Loss);
@@ -158,7 +157,7 @@ class ScreenGame extends Screen {
                 else if (ball.getY() > Gdx.graphics.getHeight()) {
                     ball.flipVertical();
                 }
-                // If the paddle and ball overlap, make the ball travel right
+                // If the paddle and ball overlap, make the ball travel north
                 if (paddle.overlaps(ball))
                     ball.flipVertical();
                 boolean flipVertical = false;
@@ -180,9 +179,9 @@ class ScreenGame extends Screen {
                                     keepOnlyNorths(ballRelativeToBrick);
                                 else // If Ball is within the bounds of Brick
                                     removeNorthAndSouths(ballRelativeToBrick);
-                            if (brick.getX() > ball.lastPosition.x) // If Ball is left of Brick
+                            if (brick.getX() > ball.lastPosition.x) // If Ball is west of Brick
                                 keepOnlyWests(ballRelativeToBrick);
-                            else // If ball is right of Brick
+                            else // If ball is east of Brick
                                 if (brick.getX() + brick.getWidth() < ball.lastPosition.x)
                                     keepOnlyEasts(ballRelativeToBrick);
                                 else // If ball is withing bounds of Brick
@@ -338,14 +337,12 @@ class ScreenGame extends Screen {
     }
 
     /**
-     * Updates the GameState and sets framesSincePauseChanged to 0 if it is being paused/un-paused
+     * Updates the GameState and sets framesSinceStateChanged to 0 if it is being paused/un-paused
      *
      * @param gameState The GameState to set
      */
     private void setGameState(GameState gameState) {
-        if (gameState == GameState.Paused || gameState == GameState.Playing) {
-            framesSincePauseChanged = 0;
-        }
+        framesSinceStateChanged = 0;
         this.gameState = gameState;
     }
 
@@ -356,7 +353,7 @@ class ScreenGame extends Screen {
      * @return True if it has been more than allotted time, false otherwise
      */
     private boolean pausedNotRecently() {
-        return framesSincePauseChanged > 60;
+        return framesSinceStateChanged > 60;
     }
 
     /**
@@ -524,14 +521,14 @@ class Paddle extends TexturedElement {
      */
     void move(boolean direction) {
         if (direction)
-            // If moving up would put you off the screen
+            // If moving right would put you off the screen
             if (rectangle.x + speed > Gdx.graphics.getWidth() - rectangle.width)
                 // Then go to the side
                 rectangle.x = Gdx.graphics.getWidth() - rectangle.width;
                 // Otherwise just move
             else rectangle.x += speed;
         else
-            // If moving right would put you off the screen
+            // If moving left would put you off the screen
             if (rectangle.x - speed < 0)
                 // Then go to the side
                 rectangle.x = 0;

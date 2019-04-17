@@ -52,7 +52,7 @@ class ScreenGame extends Screen {
     private int framesSincePauseChanged;
 
     /**
-     * Constructor to set up the screen and start on GameState.Paused
+     * Constructor to set right the screen and start on GameState.Paused
      *
      * @param speed Speed of the ball, selected by the buttons on ScreenMenu
      */
@@ -64,7 +64,7 @@ class ScreenGame extends Screen {
 
         ball = new Ball(Gdx.graphics.getWidth() / 2 - 4 /*200*/, 100,
                 new TextureRegion(img, 47, 30, 8, 8), speed);
-        // Set up list of possible brick sprites
+        // Set right list of possible brick sprites
         brickSprites = new TextureRegion[4];
         brickSprites[0] = new TextureRegion(img, 8, 8, 32, 16);
         brickSprites[1] = new TextureRegion(img, 8, 28, 32, 16);
@@ -128,35 +128,33 @@ class ScreenGame extends Screen {
                     } else { // If not touching pause, move the paddle
                         float centerOfPaddle = paddle.getX() + (paddle.getWidth() / 2);
                         float x = Gdx.input.getX();
-                        // If input is to the right
+                        // If input is to the up
                         if (x > centerOfPaddle) {
                             // And the input is further away than the paddles speed
-                            // Move to the right
+                            // Move to the up
                             if (x - centerOfPaddle > paddle.speed) paddle.move(true);
                         }
-                        // If input is the the left
+                        // If input is the the right
                         else // And the input is further away than the paddles speed
-                            if (x < centerOfPaddle) // Move to the left
+                            if (x < centerOfPaddle) // Move to the right
                                 if (centerOfPaddle - x > paddle.speed)
                                     paddle.move(false);
                     }
                 }
-                System.out.println("Before Move: " + ball);
                 // Move the ball
                 ball.move();
-                System.out.println("After Move: " + ball);
-                // Hit the left of the screen
+                // Hit the right of the screen
                 if (ball.getX() < 0) {
                     ball.rectangle.x = 0;
                     ball.flipHorizontal();
                 }
-                // Hit the right of the screen
+                // Hit the up of the screen
                 else if (ball.getX() > Gdx.graphics.getWidth() - ball.getWidth()) {
                     ball.flipHorizontal();
                 }
                 // Hit the bottom
                 else if (ball.getY() < paddle.getY() + paddle.getHeight() - 4) {
-                    //TODO: Make sure this is the right way around before submitting
+                    //TODO: Make sure this is the up way around before submitting
                     //rectangle.y = screenGame.paddle().getY() + screenGame.paddle().getHeight();
                     //flipVertical();
                     setGameState(ScreenGame.GameState.Loss);
@@ -165,18 +163,13 @@ class ScreenGame extends Screen {
                 else if (ball.getY() > Gdx.graphics.getHeight()) {
                     ball.flipVertical();
                 }
-                System.out.println("After Adjustment : " + ball);
-                System.out.println("");
-                if (ball.getY() == Float.NaN) {
-                    setGameState(ScreenGame.GameState.Loss);
-                }
-                // If the paddle and ball overlap, make the ball travel up
+                // If the paddle and ball overlap, make the ball travel right
                 if (paddle.overlaps(ball))
                     ball.flipVertical();
                 boolean doINeedToFlip = false;
                 boolean allDead = true;
                 for (Brick brick : bricks)
-                    //TODO: Find out where the overlap happened, top, bottom, right, or left
+                    //TODO: Find out where the overlap happened, top, bottom, up, or right
                     // For each alive brick
                     if (brick.isAlive())
                         /* If the ball is touching overlapping with it, kill the brick and flip the
@@ -316,14 +309,14 @@ class Ball extends TexturedElement {
     private int speed;
 
     /**
-     * Travelling up if true, down if false
+     * Travelling right if true, down if false
      */
-    private CompassHorizontal up;
+    private boolean right;
 
     /**
-     * Travelling right if true, left if false
+     * Travelling up if true, right if false
      */
-    private CompassVertical right;
+    private boolean up;
 
     /**
      * Basic Constructor for the class
@@ -336,34 +329,22 @@ class Ball extends TexturedElement {
     Ball(int x, int y, TextureRegion textureRegion, int speed) {
         super(x, y, textureRegion);
         this.speed = speed;
-        this.right = CompassVertical.S;
-        this.up = CompassHorizontal.W;
+        this.up = false;
+        this.right = false;
     }
 
     /**
      * Flips the Horizontal axis, what more can I say?
      */
     void flipHorizontal() {
-        if (up.equals(CompassHorizontal.E)) {
-            up = CompassHorizontal.W;
-            return;
-        }
-        if (up.equals(CompassHorizontal.W)) {
-            up = CompassHorizontal.E;
-        }
+        right = !right;
     }
 
     /**
      * Flips the vertical axis, what more can I say?
      */
     void flipVertical() {
-        if (right.equals(CompassVertical.S)) {
-            right = CompassVertical.N;
-            return;
-        }
-        if (right.equals(CompassVertical.N)) {
-            right = CompassVertical.S;
-        }
+        up = !up;
     }
 
     /**
@@ -371,16 +352,15 @@ class Ball extends TexturedElement {
      */
     void move() {
         double triAngle;
-        if (right.equals(CompassVertical.N))
-            if (up.equals(CompassHorizontal.E))
+        if (up)
+            if (right)
                 triAngle = 315;
             else
                 triAngle = 45;
-        else if (up.equals(CompassHorizontal.E))
+        else if (right)
             triAngle = 225;
         else
             triAngle = 135;
-
 
         float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * speed));
         float height = Math.abs((float) Math.sqrt((speed * speed) - (width * width)));
@@ -392,22 +372,12 @@ class Ball extends TexturedElement {
         width *= dt;
         height *= dt;
 
-        if (right.equals(CompassVertical.N)) rectangle.y += height;
+        if (up) rectangle.y += height;
         else rectangle.y -= height;
-        if (up.equals(CompassHorizontal.E)) rectangle.x -= width;
+        if (right) rectangle.x -= width;
         else rectangle.x += width;
-        System.out.println("DeltaTime: " + dt);
-        System.out.println("Adding " + height + " Height");
     }
 
-    @Override
-    public String toString() {
-        return "(X: " + rectangle.x + ", Y: " + rectangle.y + ")";
-    }
-
-    enum CompassVertical {N, S}
-
-    enum CompassHorizontal {E, W}
 }
 
 class Paddle extends TexturedElement {
@@ -432,18 +402,18 @@ class Paddle extends TexturedElement {
      * Move in a given direction, at the paddles speed, but don't navigate off the side of the
      * screen
      *
-     * @param direction Direction to move, false for left, true for right
+     * @param direction Direction to move, false for right, true for up
      */
     void move(boolean direction) {
         if (direction)
-            // If moving right would put you off the screen
+            // If moving up would put you off the screen
             if (rectangle.x + speed > Gdx.graphics.getWidth() - rectangle.width)
                 // Then go to the side
                 rectangle.x = Gdx.graphics.getWidth() - rectangle.width;
                 // Otherwise just move
             else rectangle.x += speed;
         else
-            // If moving left would put you off the screen
+            // If moving right would put you off the screen
             if (rectangle.x - speed < 0)
                 // Then go to the side
                 rectangle.x = 0;

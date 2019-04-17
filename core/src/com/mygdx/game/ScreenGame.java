@@ -141,8 +141,10 @@ class ScreenGame extends Screen {
                                     paddle.move(false);
                     }
                 }
+                System.out.println("Before Move: " + ball);
                 // Move the ball
                 ball.move();
+                System.out.println("After Move: " + ball);
                 // Hit the left of the screen
                 if (ball.getX() < 0) {
                     ball.rectangle.x = 0;
@@ -163,6 +165,11 @@ class ScreenGame extends Screen {
                 else if (ball.getY() > Gdx.graphics.getHeight()) {
                     ball.flipVertical();
                 }
+                System.out.println("After Adjustment : " + ball);
+                System.out.println("");
+                if (ball.getY() == Float.NaN) {
+                    setGameState(ScreenGame.GameState.Loss);
+                }
                 // If the paddle and ball overlap, make the ball travel up
                 if (paddle.overlaps(ball))
                     ball.flipVertical();
@@ -173,7 +180,7 @@ class ScreenGame extends Screen {
                     // For each alive brick
                     if (brick.isAlive())
                         /* If the ball is touching overlapping with it, kill the brick and flip the
-                        Vertical axis of the ball */
+                         Vertical axis of the ball */
                         if (brick.overlaps(ball)) {
                             doINeedToFlip = true;
                             brick.kill();
@@ -320,10 +327,11 @@ class Ball extends TexturedElement {
 
     /**
      * Basic Constructor for the class
-     * @param x X Position of the Ball
-     * @param y Y Position of the Ball
+     *
+     * @param x             X Position of the Ball
+     * @param y             Y Position of the Ball
      * @param textureRegion Sprite of the ball
-     * @param speed Speed for the Ball, chosen by the ScreenMenu buttons
+     * @param speed         Speed for the Ball, chosen by the ScreenMenu buttons
      */
     Ball(int x, int y, TextureRegion textureRegion, int speed) {
         super(x, y, textureRegion);
@@ -373,15 +381,28 @@ class Ball extends TexturedElement {
         else
             triAngle = 135;
 
+
+        float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * speed));
+        float height = Math.abs((float) Math.sqrt((speed * speed) - (width * width)));
+        /* Multiplying deltaTime by 60 makes it approximately equal to 1, so my speed calculations
+         are more or less the same. Also fun fact, for some reason if I add "* dt" onto the previous
+         line, it causes height to calculate as a NaN for some reason, but doing the exact same
+         two lines later is perfectly alright. */
         float dt = Gdx.graphics.getDeltaTime() * 60;
-        int hypotenuse = speed;
-        float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * hypotenuse)) * dt;
-        float height = Math.abs((float) Math.sqrt((hypotenuse * hypotenuse) - (width * width))) * dt;
+        width *= dt;
+        height *= dt;
 
         if (right.equals(CompassVertical.N)) rectangle.y += height;
         else rectangle.y -= height;
         if (up.equals(CompassHorizontal.E)) rectangle.x -= width;
         else rectangle.x += width;
+        System.out.println("DeltaTime: " + dt);
+        System.out.println("Adding " + height + " Height");
+    }
+
+    @Override
+    public String toString() {
+        return "(X: " + rectangle.x + ", Y: " + rectangle.y + ")";
     }
 
     enum CompassVertical {N, S}

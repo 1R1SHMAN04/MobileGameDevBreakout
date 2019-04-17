@@ -5,8 +5,10 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 class ScreenGame extends Screen {
@@ -15,37 +17,30 @@ class ScreenGame extends Screen {
      * Paddle element
      */
     private Paddle paddle;
-
     /**
      * Ball element, with sprite and rectangle
      */
     private Ball ball;
-
     /**
      * Array of possible Sprites for Bricks
      */
     private TextureRegion[] brickSprites;
-
     /**
      * List of Bricks, with their own randomly selected sprite
      */
     private List<Brick> bricks;
-
     /**
      * Current state of the game, Playing, Paused, Victory or Loss
      */
     private GameState gameState;
-
     /**
      * Return to Menu Button, rendered while Paused
      */
     private TexturedElement returnToMenu;
-
     /**
      * Pause Button, rendered while Playing
      */
     private TexturedElement pause;
-
     /**
      * Frames since the game has been paused, game runs at 60fps
      */
@@ -166,20 +161,50 @@ class ScreenGame extends Screen {
                 // If the paddle and ball overlap, make the ball travel right
                 if (paddle.overlaps(ball))
                     ball.flipVertical();
-                boolean doINeedToFlip = false;
+                boolean flipVertical = false;
+                boolean flipHorizontal = false;
                 boolean allDead = true;
                 for (Brick brick : bricks)
-                    //TODO: Find out where the overlap happened, top, bottom, up, or right
                     // For each alive brick
                     if (brick.isAlive())
-                        /* If the ball is touching overlapping with it, kill the brick and flip the
-                         Vertical axis of the ball */
+                        /* If the ball is overlapping with it, kill the brick and figure out where
+                        the collision happened, flipping the vertical axis if approached from north
+                        or south, and flipping horizontal axis if approached from east or west */
                         if (brick.overlaps(ball)) {
-                            doINeedToFlip = true;
+                            List<Compass> ballRelativeToBrick =
+                                    new ArrayList<Compass>(Arrays.asList(Compass.values()));
+                            if (brick.getY() > ball.lastPosition.y) // If Ball is below the Brick
+                                keepOnlySouths(ballRelativeToBrick);
+                            else // If Ball is above Brick
+                                if (brick.getY() + brick.getHeight() < ball.lastPosition.y)
+                                    keepOnlyNorths(ballRelativeToBrick);
+                                else // If Ball is within the bounds of Brick
+                                    removeNorthAndSouths(ballRelativeToBrick);
+                            if (brick.getX() > ball.lastPosition.x) // If Ball is left of Brick
+                                keepOnlyWests(ballRelativeToBrick);
+                            else // If ball is right of Brick
+                                if (brick.getX() + brick.getWidth() < ball.lastPosition.x)
+                                    keepOnlyEasts(ballRelativeToBrick);
+                                else // If ball is withing bounds of Brick
+                                    removeEastAndWests(ballRelativeToBrick);
+                            /* If after all that garbage, the ball is north or south of the brick,
+                             flip vertically and if it is east or west of the brick, flip
+                             horizontally */
+                            if (ballRelativeToBrick.get(0).name().contains("N") ||
+                                    ballRelativeToBrick.get(0).name().contains("S"))
+                                flipVertical = true;
+                            if (ballRelativeToBrick.get(0).name().contains("E") ||
+                                    ballRelativeToBrick.get(0).name().contains("W"))
+                                flipHorizontal = true;
                             brick.kill();
                         } else // If not touching the ball there are still more bricks alive
                             allDead = false;
-                if (doINeedToFlip)
+                /* Perform any needed flips, as decided above. Done this way in case two collisions
+                 are ever detected on the same frame so that it doesn't flip twice, continuing in
+                 the same direction */
+                if (flipHorizontal)
+                    ball.flipHorizontal();
+                if (flipVertical)
                     ball.flipVertical();
                 if (allDead)
                     setGameState(GameState.Victory);
@@ -190,6 +215,96 @@ class ScreenGame extends Screen {
             case Loss:
                 // Display you are loser
         }
+    }
+
+    /**
+     * Remove all the Non-North directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void keepOnlyNorths(List<Compass> locations) {
+        locations.remove(Compass.Center);
+        locations.remove(Compass.E);
+        locations.remove(Compass.SE);
+        locations.remove(Compass.S);
+        locations.remove(Compass.SW);
+        locations.remove(Compass.W);
+    }
+
+    /**
+     * Remove all the Non-East directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void keepOnlyEasts(List<Compass> locations) {
+        locations.remove(Compass.Center);
+        locations.remove(Compass.N);
+        locations.remove(Compass.S);
+        locations.remove(Compass.SW);
+        locations.remove(Compass.W);
+        locations.remove(Compass.NW);
+    }
+
+    /**
+     * Remove all the Non-South directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void keepOnlySouths(List<Compass> locations) {
+        locations.remove(Compass.Center);
+        locations.remove(Compass.N);
+        locations.remove(Compass.NE);
+        locations.remove(Compass.E);
+        locations.remove(Compass.W);
+        locations.remove(Compass.NW);
+    }
+
+    /**
+     * Remove all the Non-West directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void keepOnlyWests(List<Compass> locations) {
+        locations.remove(Compass.Center);
+        locations.remove(Compass.N);
+        locations.remove(Compass.NE);
+        locations.remove(Compass.E);
+        locations.remove(Compass.SE);
+        locations.remove(Compass.S);
+    }
+
+    /**
+     * Remove all the North and South directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void removeNorthAndSouths(List<Compass> locations) {
+        locations.remove(Compass.N);
+        locations.remove(Compass.NE);
+        locations.remove(Compass.SE);
+        locations.remove(Compass.S);
+        locations.remove(Compass.SW);
+        locations.remove(Compass.NW);
+    }
+
+    /**
+     * Remove all the East and West directions from the list
+     *
+     * @param locations Potential locations a ball could be in, relative to the brick it is
+     *                  overlapping with
+     */
+    private void removeEastAndWests(List<Compass> locations) {
+        locations.remove(Compass.NE);
+        locations.remove(Compass.E);
+        locations.remove(Compass.SE);
+        locations.remove(Compass.SW);
+        locations.remove(Compass.W);
+        locations.remove(Compass.NW);
     }
 
     /**
@@ -251,6 +366,8 @@ class ScreenGame extends Screen {
         Paused, Playing, Victory, Loss
     }
 
+    private enum Compass {N, NE, E, SE, S, SW, W, NW, Center}
+
 }
 
 /**
@@ -303,16 +420,15 @@ class Brick extends Element {
  */
 class Ball extends TexturedElement {
 
+    Vector2 lastPosition;
     /**
      * Pixels to move per frame
      */
     private int speed;
-
     /**
      * Travelling right if true, down if false
      */
     private boolean right;
-
     /**
      * Travelling up if true, right if false
      */
@@ -331,6 +447,7 @@ class Ball extends TexturedElement {
         this.speed = speed;
         this.up = false;
         this.right = false;
+        lastPosition = new Vector2();
     }
 
     /**
@@ -351,6 +468,7 @@ class Ball extends TexturedElement {
      * Uses Trigonometry to move the ball
      */
     void move() {
+        lastPosition = rectangle.getCenter(lastPosition);
         double triAngle;
         if (up)
             if (right)

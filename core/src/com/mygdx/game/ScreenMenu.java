@@ -4,10 +4,15 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
+import java.util.ArrayList;
+import java.util.List;
+
 class ScreenMenu extends Screen {
 
     private TexturedElement quitButton;
     private TexturedElement gameButton;
+    private List<SpeedButton> speedButtons;
+    private int speed;
 
     ScreenMenu() {
         int height = Gdx.graphics.getHeight();
@@ -16,18 +21,45 @@ class ScreenMenu extends Screen {
                 new Texture("Quit to Desktop.png"));
         gameButton = new TexturedElement(height / 3, width / 3 - 50,
                 new Texture("Start Game.png"));
+        speed = 2;
+        speedButtons = new ArrayList<SpeedButton>();
+        int yOffset = 50;
+        for (int speed : new int[]{20, 15, 10, 5, 2}) {
+            speedButtons.add(new SpeedButton(50, (yOffset += 50),
+                    new Texture("Start Game.png"), speed));
+        }
+
+    }
+
+    private void update() {
+        for (SpeedButton speedButton : speedButtons)
+            if (MyGdxGame.clickingElement(speedButton))
+                speed = speedButton.speed;
     }
 
     public void render(SpriteBatch batch) {
+        update();
         draw(gameButton, batch);
         draw(quitButton, batch);
-        if (MyGdxGame.inputIsOnElement(gameButton))
-            MyGdxGame.setScreen(new ScreenGame());
-        else if (MyGdxGame.inputIsOnElement(quitButton))
+        for (SpeedButton speedButton : speedButtons)
+            if (speedButton.speed != speed)
+                draw(speedButton, batch);
+        if (MyGdxGame.clickingElement(gameButton))
+            MyGdxGame.setScreen(new ScreenGame(speed));
+        else if (MyGdxGame.clickingElement(quitButton))
             Gdx.app.exit();
     }
 
     public void dispose() {
     }
 
+}
+
+class SpeedButton extends TexturedElement {
+    int speed;
+
+    SpeedButton(int x, int y, Texture texture, int speed) {
+        super(x, y, texture);
+        this.speed = speed;
+    }
 }

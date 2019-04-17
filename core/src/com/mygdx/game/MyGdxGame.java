@@ -20,31 +20,13 @@ public class MyGdxGame extends ApplicationAdapter {
         scrCurrent = screen;
     }
 
-    static boolean inputIsOnElement(Element element) {
+    static boolean clickingElement(Element element) {
         return (Gdx.input.isTouched() && element.contains(Gdx.input.getX(),
                 Gdx.graphics.getHeight() - Gdx.input.getY()));
     }
 
     static int randomInt(int start, int end) {
         return (int) (Math.random() * end) + start;
-    }
-
-    static boolean rectanglesOverlap(Rectangle first, Rectangle second) {
-        return oneOverlap(first, second) || oneOverlap(second, first);
-    }
-
-    static boolean clippingCorner(Rectangle first, Rectangle second) {
-        return oneClip(first, second) || oneClip(second, first);
-    }
-
-    private static boolean oneClip(Rectangle first, Rectangle second) {
-        return ((first.height + first.y  == second.y) && (first.x == second.x + second.width)) ||
-                (first.x + first.width == second.x && first.y + first.height == second.y);
-    }
-
-    private static boolean oneOverlap(Rectangle first, Rectangle second) {
-        return between(second.x, first.x, first.x + first.width) &&
-                between(second.y, first.y, first.y + first.height);
     }
 
     private static boolean between(float number, float min, float max) {
@@ -90,6 +72,10 @@ abstract class Element {
         this.rectangle = rectangle;
     }
 
+    boolean overlaps(Element other) {
+        return rectangle.overlaps(other.rectangle);
+    }
+
     boolean contains(Element element) {
         return contains(element.rectangle);
     }
@@ -131,14 +117,14 @@ abstract class Element {
 class TexturedElement extends Element {
     TextureRegion textureRegion;
 
-    TexturedElement(Rectangle rectangle, TextureRegion textureRegion) {
-        super(rectangle);
-        this.textureRegion = textureRegion;
-    }
-
     TexturedElement(int x, int y, Texture texture) {
         super(new Rectangle(x, y, texture.getWidth(), texture.getHeight()));
         this.textureRegion = new TextureRegion(texture);
+    }
+
+    TexturedElement(int x, int y, TextureRegion textureRegion) {
+        super(new Rectangle(x, y, textureRegion.getRegionWidth(), textureRegion.getRegionHeight()));
+        this.textureRegion = textureRegion;
     }
 
 }

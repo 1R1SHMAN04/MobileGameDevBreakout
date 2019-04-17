@@ -30,33 +30,53 @@ class ScreenGame extends Screen {
      * List of Bricks, with their own randomly selected sprite
      */
     private List<Brick> bricks;
+
+    /**
+     * Current state of the game, Playing, Paused, Victory or Loss
+     */
     private GameState gameState;
+
+    /**
+     * Return to Menu Button, rendered while Paused
+     */
     private TexturedElement returnToMenu;
+
+    /**
+     * Pause Button, rendered while Playing
+     */
     private TexturedElement pause;
+
+    /**
+     * Frames since the game has been paused, game runs at 60fps
+     */
     private int framesSincePauseChanged;
 
-    ScreenGame() {
+    /**
+     * Constructor to set up the screen and start on GameState.Paused
+     *
+     * @param speed Speed of the ball, selected by the buttons on ScreenMenu
+     */
+    ScreenGame(int speed) {
         Texture img = new Texture("breakout_pieces.png");
 
-        paddle = new Paddle(new Rectangle(Gdx.graphics.getWidth() / 2f - 32, 0, 64, 16),
+        paddle = new Paddle(Gdx.graphics.getWidth() / 2 - 32, 0,
                 new TextureRegion(img, 48, 8, 64, 16));
 
-        ball = new Ball(new Rectangle(Gdx.graphics.getWidth() / 2f - 4, 100, 8, 8),
-                new TextureRegion(img, 47, 30, 8, 8),this);
+        ball = new Ball(Gdx.graphics.getWidth() / 2 - 4 /*200*/, 100,
+                new TextureRegion(img, 47, 30, 8, 8), speed);
         // Set up list of possible brick sprites
         brickSprites = new TextureRegion[4];
-        brickSprites[0] = (new TextureRegion(img, 8, 8, 32, 16));
-        brickSprites[1] = (new TextureRegion(img, 8, 28, 32, 16));
-        brickSprites[2] = (new TextureRegion(img, 8, 48, 32, 16));
-        brickSprites[3] = (new TextureRegion(img, 8, 68, 32, 16));
+        brickSprites[0] = new TextureRegion(img, 8, 8, 32, 16);
+        brickSprites[1] = new TextureRegion(img, 8, 28, 32, 16);
+        brickSprites[2] = new TextureRegion(img, 8, 48, 32, 16);
+        brickSprites[3] = new TextureRegion(img, 8, 68, 32, 16);
         bricks = new ArrayList<Brick>();
         // For each row
         for (int yOffset : new int[]{448, 432, 416, 400}) {
             int xOffset = 0;
             // Make 20 bricks with random colours
             for (int j = 0; j < 20; j++, xOffset += 32)
-                bricks.add(new Brick(new Rectangle(xOffset, yOffset, 32, 16),
-                        randomBrickSprite()));
+                bricks.add(new Brick(xOffset, yOffset, randomBrickSprite()));
         }
         setGameState(GameState.Paused);
 
@@ -68,89 +88,128 @@ class ScreenGame extends Screen {
                 pauseIcon.getHeight(), pauseIcon);
     }
 
-    public void render(SpriteBatch batch) {
+    /**
+     * Updated positions of Ball and Paddle, as well as the Orientation of the Ball, and the states
+     * of all bricks
+     *
+     * @param batch SpriteBatch to draw to
+     */
+    private void update(SpriteBatch batch) {
+        boolean isTouched = Gdx.input.isTouched();
         // Depending on the Game State, do some stuff
         switch (gameState) {
             case Paused:
                 framesSincePauseChanged++;
-                // Draw the pause button
+                // Draw the return button
                 draw(returnToMenu, batch);
                 // If you are touching the screen
-                if (Gdx.input.isTouched()) {
+                if (isTouched) {
                     // If the touch is on the returnToMenu button
-                    if (MyGdxGame.inputIsOnElement(returnToMenu)) {
+                    if (MyGdxGame.clickingElement(returnToMenu))
                         // Return to the menu
                         MyGdxGame.setScreen(new ScreenMenu());
-                    }
                     // If you are touching somewhere other than the pause button
-                    if (!MyGdxGame.inputIsOnElement(returnToMenu) && pausedNotRecently()) {
+                    if (!MyGdxGame.clickingElement(returnToMenu) && pausedNotRecently())
                         // Set state to playing
                         setGameState(GameState.Playing);
-                    }
                 }
                 break;
             case Playing:
                 framesSincePauseChanged++;
+                // Draw the pause button
                 draw(pause, batch);
-                if (Gdx.input.isTouched()) {
-                    if (MyGdxGame.inputIsOnElement(pause) && pausedNotRecently()) {
+                if (isTouched) {
+                    // If you are touching the pause button and the game hasn't been paused in the
+                    // 60 frames
+                    if (MyGdxGame.clickingElement(pause) && pausedNotRecently()) {
                         // If pressing pause, set gameState to pause
                         setGameState(GameState.Paused);
                         break;
-                    } else {
-                        if (pausedNotRecently(30)) {
-                            float centerOfPaddle = paddle.getX() + (paddle.getWidth() / 2);
-                            float x = Gdx.input.getX();
-                            // If input is to the right
-                            if (x > centerOfPaddle) {
-                                if (x - centerOfPaddle > paddle.speed) {
-                                    paddle.move(true);
-                                }
-                            }
-                            // If input is the the left
-                            else if (x < centerOfPaddle) {
-                                if (centerOfPaddle - x > paddle.speed) {
-                                    paddle.move(false);
-                                }
-                            }
+                    } else { // If not touching pause, move the paddle
+                        float centerOfPaddle = paddle.getX() + (paddle.getWidth() / 2);
+                        float x = Gdx.input.getX();
+                        // If input is to the right
+                        if (x > centerOfPaddle) {
+                            // And the input is further away than the paddles speed
+                            // Move to the right
+                            if (x - centerOfPaddle > paddle.speed) paddle.move(true);
                         }
+                        // If input is the the left
+                        else // And the input is further away than the paddles speed
+                            if (x < centerOfPaddle) // Move to the left
+                                if (centerOfPaddle - x > paddle.speed)
+                                    paddle.move(false);
                     }
                 }
+                // Move the ball
                 ball.move();
-                // If the paddle and ball overlap, make the ball travel up
-                // If paddle clips two corners at the same time
-                if (MyGdxGame.rectanglesOverlap(paddle.rectangle, ball.rectangle)) {
-                    ball.vertical = Ball.CompassVertical.N;
+                // Hit the left of the screen
+                if (ball.getX() < 0) {
+                    ball.rectangle.x = 0;
+                    ball.flipHorizontal();
                 }
-
-                //TODO: If ball is lower than top of paddle you lose
-
-                /* If the ball is intersecting with any brick, delete the brick and change balls
-                direction */
+                // Hit the right of the screen
+                else if (ball.getX() > Gdx.graphics.getWidth() - ball.getWidth()) {
+                    ball.flipHorizontal();
+                }
+                // Hit the bottom
+                else if (ball.getY() < paddle.getY() + paddle.getHeight() - 4) {
+                    //TODO: Make sure this is the right way around before submitting
+                    //rectangle.y = screenGame.paddle().getY() + screenGame.paddle().getHeight();
+                    //flipVertical();
+                    setGameState(ScreenGame.GameState.Loss);
+                }
+                // Hit the top
+                else if (ball.getY() > Gdx.graphics.getHeight()) {
+                    ball.flipVertical();
+                }
+                // If the paddle and ball overlap, make the ball travel up
+                if (paddle.overlaps(ball))
+                    ball.flipVertical();
                 boolean doINeedToFlip = false;
-                for (Brick brick : bricks) {
-                    if (!brick.isDed())
-                        if (MyGdxGame.rectanglesOverlap(brick.rectangle, ball.rectangle)) {
-                            System.out.println("Hit a brick");
+                boolean allDead = true;
+                for (Brick brick : bricks)
+                    //TODO: Find out where the overlap happened, top, bottom, right, or left
+                    // For each alive brick
+                    if (brick.isAlive())
+                        /* If the ball is touching overlapping with it, kill the brick and flip the
+                        Vertical axis of the ball */
+                        if (brick.overlaps(ball)) {
                             doINeedToFlip = true;
                             brick.kill();
-                        }
-                }
+                        } else // If not touching the ball there are still more bricks alive
+                            allDead = false;
                 if (doINeedToFlip)
-                    ball.vertical = Ball.CompassVertical.S;
+                    ball.flipVertical();
+                if (allDead)
+                    setGameState(GameState.Victory);
                 break;
-            case PostGame:
+            case Victory:
                 // yeah idk, display the score?
                 break;
+            case Loss:
+                // Display you are loser
         }
+    }
+
+    /**
+     * Wipes screen clean and renders all elements except the dead bricked
+     *
+     * @param batch SpriteBatch to draw to
+     */
+    public void render(SpriteBatch batch) {
+        update(batch);
         // Render all the bricks, the paddle and the ball
         for (Brick brick : bricks)
-            if (!brick.isDed())
+            if (brick.isAlive())
                 draw(brickSprites[brick.textureRegion], brick, batch);
         draw(paddle, batch);
         draw(ball, batch);
     }
 
+    /**
+     * Dispose method, called when the object is about to be eaten by Java's Garbage Collector
+     */
     public void dispose() {
     }
 
@@ -182,19 +241,15 @@ class ScreenGame extends Screen {
      * @return True if it has been more than allotted time, false otherwise
      */
     private boolean pausedNotRecently() {
-        return pausedNotRecently(60);
+        return framesSincePauseChanged > 60;
     }
 
-    private boolean pausedNotRecently(int frames) {
-        return framesSincePauseChanged > frames;
+    /**
+     * States for the game to be in, duh
+     */
+    public enum GameState {
+        Paused, Playing, Victory, Loss
     }
-
-    public float paddleY() {
-        return paddle.getY();
-    }
-
-
-    public enum GameState {Paused, Playing, PostGame}
 
 }
 
@@ -202,102 +257,131 @@ class ScreenGame extends Screen {
  * A Brick Doesn't store it's own texture to save on RAM space, although the space saved is minimal
  */
 class Brick extends Element {
+    /**
+     * Index of the brickSprites array to be used when drawing
+     */
     int textureRegion;
-    private boolean dead;
 
-    Brick(Rectangle rectangle, int textureRegion) {
-        super(rectangle);
+    /**
+     * Is the brick alive or ded?
+     */
+    private boolean ded;
+
+    /**
+     * Basic Constructor for the class
+     *
+     * @param x             X position of the Brick
+     * @param y             Y position of the Brick
+     * @param textureRegion Index for sprite
+     */
+    Brick(int x, int y, int textureRegion) {
+        super(new Rectangle(x, y, 32, 16));
         this.textureRegion = textureRegion;
-        dead = false;
+        ded = false;
     }
 
-    boolean isDed() {
-        return dead;
+    /**
+     * Tells if the Brick has been hit yet
+     *
+     * @return True if the brick hasn't been hit, false otherwise
+     */
+    boolean isAlive() {
+        return !ded;
     }
 
+    /**
+     * Sets ded to true
+     */
     void kill() {
-        dead = true;
+        ded = true;
     }
 
 }
 
+/**
+ * Class to represent the ball, and take care of how to move it, and what direction to move in
+ */
 class Ball extends TexturedElement {
 
+    /**
+     * Pixels to move per frame
+     */
     private int speed;
-    ScreenGame screenGame;
-    CompassVertical vertical;
-    CompassHorizontal horizontal;
 
-    Ball(Rectangle rectangle, TextureRegion textureRegion, ScreenGame screenGame) {
-        super(rectangle, textureRegion);
-        this.speed = 2;
-        this.vertical = CompassVertical.S;
-        this.horizontal = CompassHorizontal.W;
-        this.screenGame = screenGame;
+    /**
+     * Travelling up if true, down if false
+     */
+    private CompassHorizontal up;
+
+    /**
+     * Travelling right if true, left if false
+     */
+    private CompassVertical right;
+
+    /**
+     * Basic Constructor for the class
+     * @param x X Position of the Ball
+     * @param y Y Position of the Ball
+     * @param textureRegion Sprite of the ball
+     * @param speed Speed for the Ball, chosen by the ScreenMenu buttons
+     */
+    Ball(int x, int y, TextureRegion textureRegion, int speed) {
+        super(x, y, textureRegion);
+        this.speed = speed;
+        this.right = CompassVertical.S;
+        this.up = CompassHorizontal.W;
     }
 
+    /**
+     * Flips the Horizontal axis, what more can I say?
+     */
     void flipHorizontal() {
-        System.out.println("It's flipping horizontal dude!");
-        if (horizontal.equals(CompassHorizontal.E)) {
-            horizontal = CompassHorizontal.W;
+        if (up.equals(CompassHorizontal.E)) {
+            up = CompassHorizontal.W;
             return;
         }
-        if (horizontal.equals(CompassHorizontal.W)) {
-            horizontal = CompassHorizontal.E;
+        if (up.equals(CompassHorizontal.W)) {
+            up = CompassHorizontal.E;
         }
     }
 
+    /**
+     * Flips the vertical axis, what more can I say?
+     */
     void flipVertical() {
-
-        if (vertical.equals(CompassVertical.S)) {
-            System.out.println("Mario Time!");
-            vertical = CompassVertical.N;
+        if (right.equals(CompassVertical.S)) {
+            right = CompassVertical.N;
             return;
         }
-        if (vertical.equals(CompassVertical.N)) {
-            System.out.println("We're going down, captain!");
-            vertical = CompassVertical.S;
+        if (right.equals(CompassVertical.N)) {
+            right = CompassVertical.S;
         }
     }
 
+    /**
+     * Uses Trigonometry to move the ball
+     */
     void move() {
-        // TODO: Delta Time Fuckery (rectangle.x += speed * getDeltaTime();)
         double triAngle;
-        if (vertical.equals(CompassVertical.N))
-            if (horizontal.equals(CompassHorizontal.E))
+        if (right.equals(CompassVertical.N))
+            if (up.equals(CompassHorizontal.E))
                 triAngle = 315;
             else
                 triAngle = 45;
-        else if (horizontal.equals(CompassHorizontal.E))
+        else if (up.equals(CompassHorizontal.E))
             triAngle = 225;
         else
             triAngle = 135;
 
+        float dt = Gdx.graphics.getDeltaTime() * 60;
         int hypotenuse = speed;
-        float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * hypotenuse));
-        float height = Math.abs((float) Math.sqrt((hypotenuse * hypotenuse) - (width * width)));
+        float width = Math.abs((float) (Math.sin(Math.toRadians(triAngle)) * hypotenuse)) * dt;
+        float height = Math.abs((float) Math.sqrt((hypotenuse * hypotenuse) - (width * width))) * dt;
 
-        if (vertical.equals(CompassVertical.N)) rectangle.y += height;
+        if (right.equals(CompassVertical.N)) rectangle.y += height;
         else rectangle.y -= height;
-        if (horizontal.equals(CompassHorizontal.E)) rectangle.x -= width;
+        if (up.equals(CompassHorizontal.E)) rectangle.x -= width;
         else rectangle.x += width;
-
-        // Hit the left os screen
-        if (rectangle.x < 0) {
-            rectangle.x = 0;
-            flipHorizontal();
-        }
-        // Hit the right of the screen
-        else if (rectangle.x > Gdx.graphics.getWidth() - rectangle.width) {
-            flipHorizontal();
-        }
-        else if(rectangle.y < screenGame.paddleY()){
-            // You die
-        }
-        else if(rectangle.getY() > Gdx.graphics.getHeight()) {
-            // Bounce down
-        }
-        //System.out.println("Travelling " + vertical + horizontal);
     }
 
     enum CompassVertical {N, S}
@@ -306,14 +390,20 @@ class Ball extends TexturedElement {
 }
 
 class Paddle extends TexturedElement {
-
     /**
      * Pixels moved per frame
      */
     float speed;
 
-    Paddle(Rectangle rectangle, TextureRegion textureRegion) {
-        super(rectangle, textureRegion);
+    /**
+     * Basic Constructor for the class
+     *
+     * @param x             X position of the Brick
+     * @param y             Y position of the Brick
+     * @param textureRegion Sprite
+     */
+    Paddle(int x, int y, TextureRegion textureRegion) {
+        super(x, y, textureRegion);
         speed = 5;
     }
 

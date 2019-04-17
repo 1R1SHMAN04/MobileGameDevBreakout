@@ -1,6 +1,7 @@
 package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -17,30 +18,77 @@ class ScreenGame extends Screen {
      * Paddle element
      */
     private Paddle paddle;
+
     /**
      * Ball element, with sprite and rectangle
      */
     private Ball ball;
+
     /**
      * Array of possible Sprites for Bricks
      */
     private TextureRegion[] brickSprites;
+
     /**
      * List of Bricks, with their own randomly selected sprite
      */
     private List<Brick> bricks;
+
     /**
      * Current state of the game, Playing, Paused, Victory or Loss
      */
     private GameState gameState;
+
     /**
      * Return to Menu Button, rendered while Paused
      */
     private TexturedElement returnToMenu;
+
     /**
      * Pause Button, rendered while Playing
      */
     private TexturedElement pause;
+
+    /**
+     * Text to show up when you win or lose
+     */
+    private TexturedElement youWinOrLose;
+
+    /**
+     * Text to display upon end of Game, telling player how to restart
+     */
+    private TexturedElement restart;
+
+    /**
+     * Text to display upon end of Game, telling player how to quit
+     */
+    private TexturedElement quit;
+
+    /**
+     * Sound to play when a Brick is killed
+     */
+    private Sound brickKill;
+
+    /**
+     * Sound to play when the Ball impacts the Paddle
+     */
+    private Sound paddleImpact;
+
+    /**
+     * Sound to play when the Ball impacts with the side of the screen
+     */
+    private Sound sideImpact;
+
+    /**
+     * Sound to play when the player wins the game
+     */
+    private Sound win;
+
+    /**
+     * Sound to play when the player loses the game
+     */
+    private Sound lose;
+
     /**
      * Frames since the game has been paused, game runs at 60fps
      */
@@ -52,12 +100,19 @@ class ScreenGame extends Screen {
      * @param speed Speed of the ball, selected by the buttons on ScreenMenu
      */
     ScreenGame(int speed) {
-        Texture img = new Texture("breakout_pieces.png");
+        Initialize(speed);
+    }
 
+    /**
+     * Initializes the screen so that Game can be restarted
+     *
+     * @param speed Speed that the Ball will move
+     */
+    private void Initialize(int speed) {
+        Texture img = new Texture("breakout_pieces.png");
         paddle = new Paddle(Gdx.graphics.getWidth() / 2 - 32, 0,
                 new TextureRegion(img, 48, 8, 64, 16));
-
-        ball = new Ball(Gdx.graphics.getWidth() / 2 - 4 /*200*/, 100,
+        ball = new Ball(MyGdxGame.randomInt(0, Gdx.graphics.getWidth()), 350,
                 new TextureRegion(img, 47, 30, 8, 8), speed);
         // Set right list of possible brick sprites
         brickSprites = new TextureRegion[4];
@@ -74,13 +129,28 @@ class ScreenGame extends Screen {
                 bricks.add(new Brick(xOffset, yOffset, randomBrickSprite()));
         }
         setGameState(GameState.Paused);
-
         Texture returnIcon = new Texture("Return to Menu.png");
         Texture pauseIcon = new Texture("Pause.png");
+        Texture inTheEndGameNow = new Texture("You Win!.png");
         returnToMenu = new TexturedElement(Gdx.graphics.getWidth() - returnIcon.getWidth(),
                 Gdx.graphics.getHeight() - returnIcon.getHeight(), returnIcon);
         pause = new TexturedElement(Gdx.graphics.getWidth() - pauseIcon.getWidth(),
                 pauseIcon.getHeight(), pauseIcon);
+        youWinOrLose = new TexturedElement(0, 0, inTheEndGameNow);
+        restart = new TexturedElement(0, 0, new Texture("Restart.png"));
+        restart.centerToScreen();
+        restart.rectangle.y -= youWinOrLose.rectangle.height * 2;
+        restart.rectangle.x -= youWinOrLose.rectangle.width;
+        quit = new TexturedElement(0, 0, new Texture("Quit to Desktop.png"));
+        quit.centerToScreen();
+        quit.rectangle.y -= youWinOrLose.rectangle.height * 2;
+        quit.rectangle.x += youWinOrLose.rectangle.width;
+        win = Gdx.audio.newSound(Gdx.files.internal("Win.mp3"));
+        lose = Gdx.audio.newSound(Gdx.files.internal("Lose.wav"));
+        brickKill = Gdx.audio.newSound(Gdx.files.internal("Brick Kill.mp3"));
+        sideImpact = Gdx.audio.newSound(Gdx.files.internal("Side Impact.mp3"));
+        paddleImpact = Gdx.audio.newSound(Gdx.files.internal("Paddle Impact.mp3"));
+
     }
 
     /**
@@ -100,11 +170,13 @@ class ScreenGame extends Screen {
                 // If you are touching the screen
                 if (isTouched) {
                     // If the touch is on the returnToMenu button
-                    if (MyGdxGame.clickingElement(returnToMenu))
+                    if (MyGdxGame.pressingElement(returnToMenu)) {
+                        MyGdxGame.buttonClick.play();
                         // Return to the menu
                         MyGdxGame.setScreen(new ScreenMenu());
+                    }
                     // If you are touching somewhere other than the pause button
-                    if (!MyGdxGame.clickingElement(returnToMenu) && pausedNotRecently())
+                    if (!MyGdxGame.pressingElement(returnToMenu) && pausedNotRecently())
                         // Set state to playing
                         setGameState(GameState.Playing);
                 }
@@ -115,24 +187,13 @@ class ScreenGame extends Screen {
                 if (isTouched) {
                     /* If you are touching the pause button and the game hasn't been paused in the
                      last 60 frames */
-                    if (MyGdxGame.clickingElement(pause) && pausedNotRecently()) {
+                    if (MyGdxGame.pressingElement(pause) && pausedNotRecently()) {
+                        MyGdxGame.buttonClick.play();
                         // If pressing pause, set gameState to pause
                         setGameState(GameState.Paused);
                         break;
                     } else { // If not touching pause, move the paddle
-                        float centerOfPaddle = paddle.getX() + (paddle.getWidth() / 2);
-                        float x = Gdx.input.getX();
-                        // If input is to the east
-                        if (x > centerOfPaddle) {
-                            // And the input is further away than the paddles speed
-                            // Move to the east
-                            if (x - centerOfPaddle > paddle.speed) paddle.move(true);
-                        }
-                        // If input is the the west
-                        else // And the input is further away than the paddles speed
-                            if (x < centerOfPaddle) // Move to the west
-                                if (centerOfPaddle - x > paddle.speed)
-                                    paddle.move(false);
+                        paddle.move();
                     }
                 }
                 // Move the ball
@@ -140,26 +201,32 @@ class ScreenGame extends Screen {
                 // Hit the left of the screen
                 if (ball.getX() < 0) {
                     ball.rectangle.x = 0;
+                    sideImpact.play();
                     ball.flipHorizontal();
                 }
                 // Hit the right of the screen
                 else if (ball.getX() > Gdx.graphics.getWidth() - ball.getWidth()) {
+                    ball.rectangle.x = Gdx.graphics.getWidth() - ball.getWidth();
+                    sideImpact.play();
                     ball.flipHorizontal();
                 }
                 // Hit the bottom
                 else if (ball.getY() < paddle.getHeight() / 4) {
-                    //TODO: Make sure this is the right way around before submitting
-                    //rectangle.y = screenGame.paddle().getY() + screenGame.paddle().getHeight();
-                    //flipVertical();
+                    lose.play();
                     setGameState(ScreenGame.GameState.Loss);
                 }
                 // Hit the top
-                else if (ball.getY() > Gdx.graphics.getHeight()) {
+                else if (ball.getY() > Gdx.graphics.getHeight() - ball.getHeight()) {
+                    ball.rectangle.y = Gdx.graphics.getHeight() - ball.getHeight();
+                    sideImpact.play();
                     ball.flipVertical();
+
                 }
                 // If the paddle and ball overlap, make the ball travel north
-                if (paddle.overlaps(ball))
+                if (paddle.overlaps(ball)) {
+                    paddleImpact.play();
                     ball.flipVertical();
+                }
                 boolean flipVertical = false;
                 boolean flipHorizontal = false;
                 boolean allDead = true;
@@ -196,6 +263,7 @@ class ScreenGame extends Screen {
                                     ballRelativeToBrick.get(0).name().contains("W"))
                                 flipHorizontal = true;
                             brick.kill();
+                            brickKill.play();
                         } else // If not touching the ball there are still more bricks alive
                             allDead = false;
                 /* Perform any needed flips, as decided above. Done this way in case two collisions
@@ -205,14 +273,35 @@ class ScreenGame extends Screen {
                     ball.flipHorizontal();
                 if (flipVertical)
                     ball.flipVertical();
-                if (allDead)
+                if (allDead) {
+                    win.play();
                     setGameState(GameState.Victory);
+                }
                 break;
             case Victory:
-                // yeah idk, display the score?
+                youWinOrLose.setTextureRegion(new Texture("You Win!.png"));
+                youWinOrLose.centerToScreen();
+                draw(youWinOrLose, batch);
+                draw(quit, batch);
+                draw(restart, batch);
+                if (isTouched)
+                    if (MyGdxGame.pressingElement(quit))
+                        Gdx.app.exit();
+                    else if (pausedNotRecently())
+                        Initialize((int) paddle.speed);
                 break;
             case Loss:
-                // Display you are loser
+                youWinOrLose.setTextureRegion(new Texture("You Died.png"));
+                youWinOrLose.centerToScreen();
+                draw(youWinOrLose, batch);
+                draw(quit, batch);
+                draw(restart, batch);
+                if (isTouched)
+                    if (MyGdxGame.pressingElement(quit))
+                        Gdx.app.exit();
+                    else if (pausedNotRecently())
+                        Initialize((int) paddle.speed);
+                break;
         }
     }
 
@@ -363,7 +452,12 @@ class ScreenGame extends Screen {
         Paused, Playing, Victory, Loss
     }
 
-    private enum Compass {N, NE, E, SE, S, SW, W, NW, Center}
+    /**
+     * Enum of Directions, for used when testing Collision
+     */
+    private enum Compass {
+        N, NE, E, SE, S, SW, W, NW, Center
+    }
 
 }
 
@@ -371,6 +465,7 @@ class ScreenGame extends Screen {
  * A Brick Doesn't store it's own texture to save on RAM space, although the space saved is minimal
  */
 class Brick extends Element {
+
     /**
      * Index of the brickSprites array to be used when drawing
      */
@@ -417,15 +512,21 @@ class Brick extends Element {
  */
 class Ball extends TexturedElement {
 
+    /**
+     * Position that the Ball was last frame, to help with collision detection
+     */
     Vector2 lastPosition;
+
     /**
      * Pixels to move per frame
      */
     private int speed;
+
     /**
      * Travelling right if true, down if false
      */
     private boolean right;
+
     /**
      * Travelling up if true, right if false
      */
@@ -495,7 +596,11 @@ class Ball extends TexturedElement {
 
 }
 
+/**
+ * Class to represent the paddle
+ */
 class Paddle extends TexturedElement {
+
     /**
      * Pixels moved per frame
      */
@@ -514,12 +619,23 @@ class Paddle extends TexturedElement {
     }
 
     /**
-     * Move in a given direction, at the paddles speed, but don't navigate off the side of the
+     * Move the paddle, at the paddles speed, but don't navigate off the side of the
      * screen
-     *
-     * @param direction Direction to move, false for right, true for up
      */
-    void move(boolean direction) {
+    void move() {
+        boolean direction;
+        float centerOfPaddle = rectangle.x + (rectangle.width / 2);
+        float x = Gdx.input.getX();
+        /* If input is to the east, and the input is further away than the paddles speed,
+         move to the east */
+        if (x > centerOfPaddle && x - centerOfPaddle > speed)
+            direction = true;
+        /* If input is the the west, and the input is further away than the paddles speed,
+         move to the west */
+        else if (x < centerOfPaddle && centerOfPaddle - x > speed)
+            direction = false;
+        else
+            return;
         if (direction)
             // If moving right would put you off the screen
             if (rectangle.x + speed > Gdx.graphics.getWidth() - rectangle.width)
@@ -536,5 +652,3 @@ class Paddle extends TexturedElement {
             else rectangle.x -= speed;
     }
 }
-
-

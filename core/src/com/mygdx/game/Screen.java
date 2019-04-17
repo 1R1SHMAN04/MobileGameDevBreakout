@@ -8,12 +8,14 @@ abstract class Screen {
     public abstract void render(SpriteBatch batch);
     public abstract void dispose();
     void draw(TexturedElement element, SpriteBatch batch) {
-        batch.draw(element.textureRegion, element.rectangle.x, element.rectangle.y,
-                element.rectangle.width, element.rectangle.height);
+        draw(element.textureRegion, element.rectangle.x,element.rectangle.y, element.rectangle.width, element.rectangle.height, batch);
     }
 
-    void draw(TextureRegion sprite, Element element, SpriteBatch batch) {
-        batch.draw(sprite, element.rectangle.x, element.rectangle.y,
-                element.rectangle.width, element.rectangle.height);
+    void draw(TextureRegion textureRegion, Element element, SpriteBatch batch) {
+        draw(textureRegion, element.rectangle.x,element.rectangle.y, element.rectangle.width, element.rectangle.height, batch);
+    }
+
+    void draw(TextureRegion textureRegion, float x, float y, float width, float height, SpriteBatch batch) {
+        batch.draw(textureRegion, x, y, width, height);
     }
 }
